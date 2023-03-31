@@ -1,19 +1,6 @@
 # TimemaRW
 Scripts and notes for the Timema knulli Redwood inversion project
 
-# Data sets
-
-Most of the data sets for this project are in `/uufs/chpc.utah.edu/common/home/gompert-group3/data/timema_clines_rw_SV/`; the nanopore data for *T. cristinae* from Refugio are in `/uufs/chpc.utah.edu/common/home/gompert-group3/data/nanoporereads/TimemaL1`.
-
-0. Whole genomes for compariative genome alignment, HiC genomes = *T. cristinae* striped, *T. cristinae* green unstriped, *T. knulli*, *T. podura* and *T. chumash* (don't necessarily care about last two for this project).
-1. **hwy154** = GBS data, LD for comparison with Refugio to test of fusion
-2. **fha_mapping_sample** = GBS data, LD as well?
-3. **n1_doro** = GBS data, LD as well?
-4. **refugio** and **refugio_2019** = GBS data, LD to test for fusion
-5. **rw_plus** = GBS data, plans for mapping performance, patterns of LD, ect.
-6. **refugio_nanoper** = nanpore data from 6 *Timema cristinae* from Refugio, could provide direct evidence of a fusion on Refugio. 
-7. **matepair_SVs** = matepair data form Kay's paper, could provide direct evidence of a fusion on Refugio.
-
 ## Comparative genome alignments
 
 From past alignments (details to come) Green striped 12033 is LG11 (which we are thinking about for the redwood stuff) and Green 7748 = LG8.
@@ -281,133 +268,11 @@ cactus jobStore /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes
 
 Summarized synteny blocks with [SynPlotsChumTcr.R](SynPlotsChumTcr.R). The synteny analysis is consistent with expectations from the alignments of both *T. chumash* and *T. cristinae* with *T. knulli* as summarized in the tables above. As expected, there is no evidence of a large inversion on chromosome 11 between *T. chumash* and *T. cristinae*, which further bolsters the evidence that we have an inversion in *T. knulli* relative to both of these species. See [AlnPlotsChumCris.pdf](https://github.com/zgompert/TimemaFusion/files/7804471/AlnPlotsChumCris.pdf).
 
-Finally, finally (maybe), we now have a [*T. podura* genome](https://github.com/zgompert/TimemaFusion/files/7843373/cen2309_report.pdf)
-, so I am throwing that in the mix too. Here again, I first maksed repeats with `RepeatMasker` (version 4.0.7) and then performed the alignment (first to *T. knulli*) with `cactus` (version 1.0.0). I have a copy of the genome here: /uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/t_podura/.
 
-```{bash}
-#!/bin/sh
-
-module load repeatmasker
-
-#version 4.0.7
-cd /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/repeat_mask
-
-RepeatMasker -s -e ncbi -xsmall -pa 24 -lib RepeatLibMergeCentroidsRM.lib /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/t_podura/jasmine-cen2309-mb-hirise-gay8i__12-30-2021__hic_output.fasta
-
-cd /scratch/general/lustre/cactusNp
-
-module load cactus
-
-cactus jobStore /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/comp_aligns/cactusTimema_Tknul_Tpod.txt cactusTknul_Tpod.hal --maxCores 80 
-
-## extract synteny blocks
-~/source/hal/bin/halSynteny --queryGenome t_podura --targetGenome t_knulli cactusTknul_Tpod.hal out_synteny_KnulPod.psl
-```
-I summarized the alignments with [SynPlotsPodKnul.R](SynPlotsPodKnul.R). As with the other alignments, most chromosomes in *T. knulli* (12 chrom.) clearly correspond with single chromosomes (scaffolds) in *T. podura* (14 chrom.), see [SynTknulTpod.pdf](https://github.com/zgompert/TimemaFusion/files/7866393/SynTknulTpod.pdf). But there were a few exceptions and the dotplot alignments were the messiest I have seen yet, see [AlnPlotsPodKnul.pdf](https://github.com/zgompert/TimemaFusion/files/7866395/AlnPlotsPodKnul.pdf). I want to align *T. podura* to *T. cristina* and *T. chumash* to make more sense of this.
-
-Here are the genome alignment analyses for *T. podura* versus *T. cristinae* (green striped) and *T. chumash*.
-
-```{bash}
-#!/bin/sh
-cd /scratch/general/lustre/cactusNp
-
-module load cactus
-
-## podura vs cristinae
-cactus jobStore /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/comp_aligns/cactusTimema_TcrsGS_Tpod.txt cactusTcrsGS_Tpod.hal --maxCores 80
-
-## podura vs chumash
-cactus jobStore /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/comp_aligns/cactusTimema_Tknul_Tchum.txt cactusTknul_Tchum.hal --maxCores 80 
-
-~/source/hal/bin/halSynteny --queryGenome t_podura --targetGenome t_cris_gs cactusTcrsGS_Tpod.hal out_synteny_CrisGSPod.psl
-
-~/source/hal/bin/halSynteny --queryGenome t_podura --targetGenome t_chumash cactusTchum_Tpod.hal out_synteny_ChumPod.psl
-```
-I summarized both alignments with [SynPlotsPodVsCrisChum.R](SynPlotsPodVsCrisChum.R). The alignments are a bit messier with *T. podura* than with the orther genomes[SynTcrisGSTpod.pdf](https://github.com/zgompert/TimemaFusion/files/8356709/SynTcrisGSTpod.pdf). I will return to this later.
-
-This next set of genome alignments aims to get at the details of the SV differentiating green versus green striped *T. cristinae*. The first step was repeat masking for the green (unstriped) *T. cristinae* genome (which was not used in the analyses above.
-
-```{bash}
-#!/bin/sh 
-module load repeatmasker
-#version 4.0.7
-cd /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/repeat_mask
-
-## run repeat masker on each genome sequence, uses library from the 2020 Science paper 
-## developed by Victor
-
-RepeatMasker -s -e ncbi -xsmall -pa 24 -lib RepeatLibMergeCentroidsRM.lib /uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/t_crist_gus/mod_hic_output.fasta
-
-```
-
-I then aligned the genomes with `cactus` and identified synteny blocks.
-
-```{bash}
-#!/bin/sh 
-#SBATCH --time=240:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks=24
-#SBATCH --account=gompert-np
-#SBATCH --partition=gompert-np
-#SBATCH --job-name=cactus-master
-#SBATCH --mail-type=FAIL
-#SBATCH --mail-user=zach.gompert@usu.edu
-
-cd /scratch/general/lustre/cactusNp
-
-module load cactus
-
-cactus jobStore /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/comp_aligns/cactusTimema_TcrGS_TcrGUS.txt cactusTcrGS_TcrGUS.hal --maxCores 80
-```
 
 ## Sex chromosome
 
 I used depth of coverage for *T. knulli* to identify the X sex chromosome (2 copies in females 1 in males). Presumably this is the same for *T. cristinae* but will check at some point. The depth data (from the redwood feeding experiment) is in `/uufs/chpc.utah.edu/common/home/gompert-group3/projects/timema_fusion/genotypes_rw` (see `depthKnulli.txt`). The analysis is in [findSexChrom.R](findSexChrom.R). The X is chromosome 13 (as defined above), which mostly comprises parts of the genome that were not assigned to a linkage group (NA) in the old (pre Hi-C) melanic *T. cristinae* genome. See the sex-coverage plot.[SexChrom.pdf](https://github.com/zgompert/TimemaFusion/files/7541054/SexChrom.pdf)
-
-## Nanopore data set
-
-Linyi generated these data and called SVs. This data set comprises Oxford Nanopore MinION sequence data from 6 green *T. cristinae* from Refugio.
-
-* Base calling with `guppy_basecaller`, which is part of the Guppy basecalling suite (version 4.2.2+effbaf8)
-```{bash}
-/uufs/chpc.utah.edu/common/home/u6033116/ont-guppy/bin/guppy_basecaller --input_path /uufs/chpc.utah.edu/common/home/gompert-group3/data/nanoporereads/TimemaL1/fast5/ --save_path /uufs/chpc.utah.edu/common/home/gompert-group3/data/nanoporereads/TimemaL1/HA_fastq --flowcell FLO-MIN106 --kit SQK-LSK109 -x auto --qscore_filtering --min_qscore 8
-```
-
-* De-multiplexing with `guppy_barcoder`, which is part of the Guppy basecalling suite (version 4.2.2+effbaf8)
-```{bash}
-/uufs/chpc.utah.edu/common/home/u6033116/ont-guppy/bin/guppy_barcoder --input_path /uufs/chpc.utah.edu/common/home/gompert-group3/data/nanoporereads/TimemaL1/HA_fastq/pass/ --save_path /uufs/chpc.utah.edu/common/home/gompert-group3/data/nanoporereads/TimemaL1/demux_fastq/ --config configuration.cfg --barcode_kits "EXP-NBD104" --trim_barcodes
-```
-
-* Sequences were aligned to the HiC green *T. cristinae* genome, `/uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/t_crist`. Need to add code from Linyi here still.
-
-* Covert sam alignments to bam
-```{bash}
-for file in *.sam
-do
-    echo $file 
-samtools view -S -b $file > ${file/.sam/.bam
-```
-* Call SVs with sniffles
-```{bash}
-for fi in *.bam; do
-filename=$(awk 'FNR ==1{ print FILENAME}' "$fi"| awk -Fm '{print $1}')
-sniffles -m $fi -v "$filename"gt.vcf --Ivcf TM_merged_SURVIVOR_1kbpdist_typesavenew.vcf
-done
-
-}
-```
-
-* Translocation file from Linyi 
-
-[Timema_TRA.txt](https://github.com/zgompert/TimemaFusion/files/7384224/Timema_TRA.txt)
-
-* Code and ideas for visualizing translocations
-
-[SV annotation](https://bioconductor.org/packages/devel/bioc/vignettes/StructuralVariantAnnotation/inst/doc/vignettes.html)
-
-
-
-* **NOTE** Might want to try *de novo* assembly of nanopore reads instead, see [canu](https://github.com/marbl/canu). Also, evidence from TRA transition calls doesn't really support merger of LG 8 and 11 (7748 and 12033), or of 42912 and 42934, which show highest interchromosomal LD in Refugio. TRA call might not be that useful. Instead use these data for *de novo* assembly and maybe for identifying other SVs (inversions and deletions) relative to Hwy154 (nice because both based on green genome).
 
 ## Host-associated genetic differentiation for 2017 Nature EE populations
 
