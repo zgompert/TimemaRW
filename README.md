@@ -278,7 +278,7 @@ I used depth of coverage for *T. knulli* to identify the X sex chromosome (2 cop
 The patterns of genetic variation on chromosome 11 (scaffold 500) in *T. knulli* indicate a large region of reduced recombination, which is most likely some form of structural variant. I looked at patterns of coverage (for SNPs) and LD along that chromosome and by SV genotype (i.e., PC1 cluster) within *T. knulli* with hopes of shedding light on the nature of the SV. There were some weak signals associated with coverage (maybe a indel is involved near one edge) with more compelling patterns in terms of LD (see [LDdifplot.pdf](https://github.com/zgompert/TimemaFusion/files/7507542/LDdifplot.pdf)
 [LDplot.pdf](https://github.com/zgompert/TimemaFusion/files/7507543/LDplot.pdf)). In brief, LD is elevated in the C allele relative to the RW allele across the SV region, and especially at the boundaries. This is consistent with selection favoring the C allele or with less recombinatino within C than within RW, but still doesn't demonstrate conclusively the nature of the SV. See [knulliDepthLD.R](knulliDepthLD.R).
 
-I added some additional analyses of LD and heterozygosity during revision that further support this hypothesis. 
+I added some additional analyses of LD and heterozygosity during revision that further support this hypothesis. See [LDhmap.R](LDhmap.R). 
 
 I used the eigenvalues from a PCA in 100 SNP windows along chromosome 11 (scaffold 500) as an alternative approach to determine the SV boundaries (but not types). The eigenvalues increase when you hit the SV as the first PC explains more of the total variation (this excludes BCTURN to avoid confounding from actual structure). I then fit a HMM to precisely define the boundaries. This with done in `R` with `HiddenMarkov` version (1.8.13). See [defineBounds.R](defineBounds.R) for details. The HMM identified a single, continuous elevated eigenvalue region from 13,093,370 43,606,674. I will use this as the SV bounds for now at least.
 
@@ -489,64 +489,6 @@ The rest of the sequence fragment does not match the reference, which is consist
 
 I added the boundaries of this inversion to a comparative alignment plot of *T. knulli* versus *T. cristinae*, see [AlignPlotsKnulliNano.R](AlignPlotsKnulliNano.R).
 
-## Alignment, variant calling and filtering for GBS data: *T. cristinae*
-
-* Includes FHA 2013 and Refugio (20XX and 2019)
-
-1. DNA sequence alignment with `bwa`; used two different genomes, HiC versions of the green striped and green unstriped *T. cristinae* genomes, see [BwaAlignFork_FHA.pl](BwaAlignFork_FHA.pl).
-
-2. Compress, sort and index alignments with `samtools`.
-
-3. Variant calling with `samtools` (version 1.5) and `bcftools` (version 1.6).
-
-Green striped genome = `/uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/t_crist/timema_cristinae_12Jun2019_lu3Hs.fasta/`
-
-Green unstriped genome =  `/uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/t_crist_gus/mod_hic_output.fasta`
-
-For green striped (in `align_fha_mapping_sample_gs`) subdirectory
-```{bash}
-module load samtools/1.5
-module load bcftools
-## samtools 1.5
-## bcftools 1.6
-
-cd /uufs/chpc.utah.edu/common/home/gompert-group3/data/timema_clines_rw_SV/align_fha_mapping_sample
-
-samtools mpileup -b bams -C 50 -d 500 -f /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/t_crist/timema_cristinae_12Jun2019_lu3Hs.fasta -q 20 -Q 30 -I -g -u -t DP,AD,ADF,ADR -o tcr_fha_mapping_variants.bcf
-bcftools call -v -c -p 0.01 -O v -o tcr_fha_mapping_variants.vcf tcr_fha_mapping_variants.bcf
-```
-
-
-For green unstriped (in `align_fha_mapping_sample_gus`) subdirectory
-```{bash}
-module load samtools/1.5
-module load bcftools/1.6
-## samtools 1.5
-## bcftools 1.6
-
-cd /uufs/chpc.utah.edu/common/home/gompert-group3/data/timema_clines_rw_SV/align_fha_mapping_sample
-
-samtools mpileup -b bams -C 50 -d 500 -f /uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/t_crist_gus/mod_hic_output.fasta -q 20 -Q 30 -I -g -u -t DP,AD,ADF,ADR -o tcr_fha_mapping_gus_variants.bcf
-bcftools call -v -c -p 0.01 -O v -o tcr_fha_mapping_gus_variants.vcf tcr_fha_mapping_gus_variants.bcf
-```
-
-* I moved the variant files to `/uufs/chpc.utah.edu/common/home/gompert-group3/projects/timema_stripe/fha_2013_variants_gs` and `/uufs/chpc.utah.edu/common/home/gompert-group3/projects/timema_stripe/fha_2013_variants_gus`. I then filtered the variants sets with `vcfFilter.pl` and `filterSomeMore.pl`.
-
-I filtered based on the same criteria for both species/data sets: 2X minimum coverage per individual, a minimum of 10 reads supporting the alternative allele, Mann-Whittney P values for BQ, MQ and read position rank-sum tests > 0.005, a minimum ratio of variant confidence to non-reference read depth of 2, a minimum mapping quality of 30, no more than 20% of individuals with missing data, only bi-allelic SNPs, and coverage not > 3 SDs of the mean coverage (at the SNP level).
-
-This left me with 169,051 SNPs for striped genome and 121,635 for the unstriped genome.
-
-* Lastly, vcf files were converted to genotype likelihood format. I decided to filter to only retain SNPs with MAF > 0.01 at this stage as well.
-
-```{bash}
-perl vcf2glSamt.pl 0.01 morefilter_filtered2x_tcr_fha_mapping_variants.vcf 
-Number of loci: 97126; number of individuals 602
-perl vcf2glSamt.pl 0.01 morefilter_filtered2x_tcr_fha_mapping_gus_variants.vcf 
-Number of loci: 69756; number of individuals 602
-```
-Thus, for analysis, I ended up with **97,126** or **69,756** SNPs and **602** individuals. 
-
-* These steps were all repeated for the Refugio samples, with the 2019 samples treated separately. Read, alignment and variant subdirectories are all in `/uufs/chpc.utah.edu/common/home/gompert-group3/data/timema_clines_rw_SV`. The final variant set in the genotype likelihood files (also filtered for MAF > 0.01) includes **238** individuals and **74,658** (green striped) or **60,096** (green unstriped) SNPs.
 
 ## Host-associated genetic differentiation for 2017 Nature EE populations
 
@@ -801,7 +743,7 @@ foreach $in (@ARGV){ ## geno files
 }
 ```
 
-I then called "genotypes" for the "SV" on scaffold 500 (PCA and k-means clustering). I asked whether SV genotype is associated with performnance (see [lmSV.R](lmSV.R)). There is evidence of a negative association with 15 d weight on RW, 15 and 21 d weight on C, and a positive association with survival on C. The survival effect on C appears to be sex-specific, with a greater effect in males. In contrast, the weight effect in C appears to be stronger in females.
+I then called "genotypes" for the "SV" on scaffold 500 (PCA and k-means clustering). I asked whether SV genotype is associated with performnance (see [lmSV.R](lmSV.R)). There is evidence of a negative association with 15 d weight on RW, 15 and 21 d weight on C, and a positive association with survival on C. The survival effect on C appears to be sex-specific, with a greater effect in males. In contrast, the weight effect in C appears to be stronger in females. I updated this file to include model comparison with AIC for models with versus with sex and source host effects.
 
 ## Gene flow-selection balance for the SV locus in *T. knulli*
 
