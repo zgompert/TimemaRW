@@ -977,3 +977,105 @@ samtools depth -f bams_knulli --reference /uufs/chpc.utah.edu/common/home/u60009
 Our best estimate given all of this is a split time (time of origin) of 5,039,976 years ago. I used a block jackknife procedure to assess uncertainty in this estimate; the block approach better accounts for LD in the SNPs. See [jackKnifeVcf.R](jackKnifeVcf.R). The divergence time distribution is shifted lower a bit relative to the point estimate (a tried a bootstrap and this is even more pronounced) such that the best estimate for the full data set is towards the high end of the jackknife distribution (see [dadiPerformTime.pdf](https://github.com/zgompert/TimemaFusion/files/10107722/dadiPerformTime.pdf)
 ). This seems fine but suggests pretty substantial sensitivity to the specific set of SNPs included. Still, the whole distribution suggests an old inversion (consistent with `beast`); the lower 5th percentile is 1,930,561 years and the median is 3,414,957 years. Finally, the model appears to be a pretty reasonable fit for the data, see: ![dd_bce_cc_bce_rw_im_old](https://user-images.githubusercontent.com/31893662/204386835-4fdfb0be-c954-48c3-a01f-d4c65fb5aaa6.png)
 
+## *T. knulli* genome annotation
+
+I annotated the *T. knulli* genome with [BRAKER2 version 2.16](https://github.com/Gaius-Augustus/BRAKER). Prior to genome annotation, we identified and masked repeat sequences using `RepeatMaske` (version 4.0.7). This was done using more sensitive slow search option, the NCBI search engine, and an existing repeat library developed for *Timema* stick insects [Vioutreix 2020large](https://www.science.org/doi/full/10.1126/science.aaz4351). Repetitive regions were soft masked (set to lowercase letters).
+
+```bash
+
+#!/bin/sh 
+#SBATCH --time=96:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=12
+#SBATCH --account=gompert-np
+#SBATCH --partition=gompert-np
+#SBATCH --job-name=repeatm
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=zach.gompert@usu.edu
+
+module load repeatmasker
+
+#version 4.0.7
+cd /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/repeat_mask
+
+## run repeat masker on each genome sequence, uses library from the 2020 Science paper 
+## developed by Victor
+
+RepeatMasker -s -e ncbi -xsmall -pa 24 -lib RepeatLibMergeCentroidsRM.lib /uufs/chpc.utah.edu/common/home/u6000989/data/timema/hic_genomes/t_knulli/tknulli_chroms_hic_output.fasta
+```
+The `BRAKER2` run is in `/uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/Annotation/t_knulli`; the main script is `runBraker.sh` and is shown below:
+
+```bash
+export GENEMARK_PATH=/home/zgompert/braker/gmes_linux_64
+export DIAMOND_PATH=/home/zgompert/braker
+export BAMTOOLS_PATH=/home/zgompert/braker/bamtools
+
+
+~/braker/BRAKER/scripts/braker.pl --species=knulli --cores 22 --genome=tknulli_chroms_hic_output.fasta.masked --prot_seq=proteins.fasta --AUGUSTUS_CONFIG_PATH=/home/zgompert/braker/Augustus/config --PROTHINT_PATH=/home/zgompert/braker/ProtHint/bin
+```
+
+I ran this on my desktop to avoid issues with dependencies on the CHPC cluster. With this pipeline `BRAKER2` is used to automate training of the gene predictions tools `GeneMark-EP+` [Brunna 2020](https://academic.oup.com/nargab/article/2/2/lqaa026/5836691) and `AUGUSTUS` [Stanke 2006](https://academic.oup.com/nar/article/34/suppl_2/W435/2505582) using protein homology information. The pipeline begins with self-training using `GeneMark-ES` [Lomsadze 2005](https://academic.oup.com/nar/article/33/20/6494/1082033) to create an initial set of seed genes as described in the `ProtHint` pipeline, which uses `DIAMOND` (v0.9.24.125) and `Spaln` (version 2.3.3d) and a protein data base. We used the set of 2,601,995 arthropod proteins from `OrthDB` (arthropod data set version 10 [Kriventseva 2019](https://academic.oup.com/nar/article/47/D1/D807/5160989), `db10_arthropoda_fasta.tar.gz,  as protein evidence. Output from this pipeline is then used for iterative model training with `GeneMark-EP+`. A set of anchored genes from `GeneMark-EP+` are then used to train `AUGUSTUS` (version 3.5.0) and predict the final set of genes.
+
+Functional annotation of the predicted *T. knulli* genes, specifically each CDS (coding sequence) was conducted using `InterProScan` (version 5.60-92.0). Gene density was summarized based on the gene (GENE) annotations. The functional annotation scripts and results are in `/uufs/chpc.utah.edu/common/home/gompert-group1/data/timema/hic_genomes/Annotation/t_knulli/braker`. 
+
+First, I formatted the files for `InterProScan` (code from Nick).
+
+```bash
+module load bedtools
+
+# get just the coding sequences (CDS) from the braker annotation
+awk '{if($3 == "CDS"){
+
+        print $0
+
+    }
+
+}' braker.gtf > brakerCDS.gtf
+
+# convert to fasta
+bedtools getfasta -fi ../tknulli_chroms_hic_output.fasta.masked -bed brakerCDS.gtf > brakerCDS.fasta
+
+# divide fasta into chunks so it can be parallelized
+
+awk 'BEGIN {n_seq=0;count=1} /^>/ {
+
+    if(n_seq%10000==0){
+
+        file=sprintf("brakerCDS_%d.fasta",count);
+
+        count++;
+
+    }
+
+    print >> file;
+
+    n_seq++;
+
+    next;
+
+} { print >> file; }' < brakerCDS.fasta
+```
+Then I ran `InterProScan` in parallel.
+
+```bash
+module load openjdk/17.0.1
+perl InterproFork.pl brakerCDS_*fasta 
+```
+
+Which runs,
+```perl
+use Parallel::ForkManager;
+my $max = 16;
+my $pm = Parallel::ForkManager->new($max);
+
+FILES:
+foreach $fa (@ARGV){
+	$pm->start and next FILES; ## fork
+        system "../../../Annotation/interproscan-5.60-92.0/interproscan.sh -t n -i $fa -goterms -dra\n";
+        $pm->finish;
+}
+
+$pm->wait_all_children;
+```
+
+I then determined the number of annotated genes in 5 megabase pair (mbp) windows across each *T. knulli* chromosome and then for the bounds of the *Perform* locus (the lower and upper bound plus or minus 5 mbps) and the remainder of the *Perform* locus. See [SummarizePerformAnnot.R](SummarizePerformAnnot.R).
