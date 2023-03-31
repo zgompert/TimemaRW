@@ -1,4 +1,5 @@
 library(data.table)
+library(fields)
 
 ## read synteny dat
 dat<-fread("out_synteny_knulli.psl",header=FALSE)
@@ -32,7 +33,7 @@ cbind(tc_sc,ch)
 #[13,]  9928  6
 pdf("SynTcrTknul.pdf",width=6,height=6)
 par(mar=c(5,5,1,1))
-image(ntab,axes=FALSE,xlab="T. knulli",ylab="T. cristinae",cex.lab=1.4)
+image.plot(ntab,axes=FALSE,xlab="T. knulli",ylab="T. cristinae",cex.lab=1.4,col = hcl.colors(12, "YlOrRd", rev = TRUE))
 axis(2,at=seq(0,13,length.out=13)/13,ch,las=2)
 axis(1,at=seq(0,12,length.out=12)/12,kn_sc,las=2)
 box()

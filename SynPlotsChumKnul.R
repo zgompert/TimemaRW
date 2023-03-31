@@ -74,7 +74,6 @@ for(i in 1:12){
 		}
 		else{
 			lines(knulSize[i]-subd[j,16:17],subd[j,12:13],col="cadetblue")
-			#lines(xub-subd[j,16:17],subd[j,12:13],col="cadetblue")
 		}
 	}
 	if(chn[i]==11){
