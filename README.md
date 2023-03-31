@@ -689,7 +689,7 @@ estpost.entropy -p gprob -s 0 -w 0 out_filtered_tpetita_variants_k*hdf5 -o G_tpe
 #parameter dimensions for gprob: loci = 32859, ind = 69, genotypes = 3, chains = 10
 ```
 
-## Multilocus mapping from *T. knulli* and *T. petita* experiments
+## Genotype-performance mapping from *T. knulli* experiment
 
 Old data and analyses are in `/uufs/chpc.utah.edu/common/home/u6000989/projects/timema_confiers/redwood_gwa/`. My original analyses are described on the legacy lab site [Timema redwood](https://sites.google.com/site/gompertlabnotes/home/researcher-pages/zach-gompert/timema/timema-redwood). 
 
