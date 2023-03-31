@@ -925,7 +925,7 @@ See [aliconverter.pl](aliconverter.pl).
 
 We then used `BEAST2` (version 2.6.6) to estimate the divergence times between the *Perform* chromosomal variants in *T. knulli*. We encoded information on the invariant sites using the `constantSiteWeights` option. We fit the GTR sequence evolution model with rate heterogeneity determined by approximating a gamma distribution with four rate categories.  We assumed a relaxed log-normal clock) with a coalescent extended Bayesian skyline tree prior. Victor fit a gamma distribution to the previously inferred divergence time for all four of our taxa–*T. knulli*, *T. petita*, *T. californicum*, and *T. poppensis*–using the `fitdistr` function in `R.` This gives a gamma with alpha = 10.8509 and beta = 0.973, which has a mean of 11.5 million years and standard deviation of 3.4 million years. We used this as the prior on the root divergence time and thus as a calibration point for our key divergence time of interest, that between the two chromosomal variants in *T. knulli*. Our input xml file is [tknulli_perform_og.xml](tknulli_perform_og.xml). We estimated the tree and associated divergence times based on 3 chains each comprising 10 million iterations.
 
-Posteriors were summarized in `R`, see [summarizeBeast.R](summarizeBest.R).
+Posteriors were summarized in `R`, see [summarizeBeast.R](summarizeBest.R) and [mkBeastFigs.R](mkBeastFigs.R).
 
 ## *Perform* divergence time dating with dadi
 
